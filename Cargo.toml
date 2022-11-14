@@ -8,3 +8,5 @@ serde_yaml = "0.9"
 serde = { version = "1", features = ["derive"] }
 minijinja = { version = "0.26", features = ["source"] }
 itertools = "0.10"
+anyhow = "1"
+walkdir = "2"
