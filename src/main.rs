@@ -47,7 +47,7 @@ impl Test {
         
         let mut scenarios = Vec::new();
         for c in combinations {
-            let values: HashMap<String, String> = c.clone().into_iter().zip(self.dimensions.clone().into_iter()).collect();
+            let values: HashMap<String, String> = self.dimensions.clone().into_iter().zip(c.clone().into_iter()).collect();
             let scenario = TestScenario::new(self.name.clone(), values);
             scenarios.push(scenario);
         }
@@ -129,6 +129,7 @@ fn main() {
                 std::fs::copy(file.path(), new_file_name);
             }
             for file in files_to_template.iter() {
+                println!("{:?}", scenario);
                 let rendered_file_content = env.get_template(&file)
                     .unwrap().render(context!(test_scenario => scenario)).unwrap();
                 std::fs::write(scenario_dir.join(file), rendered_file_content).unwrap();
