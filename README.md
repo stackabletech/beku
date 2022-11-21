@@ -1,3 +1,5 @@
 # **Be**tter **ku**ttl
 
-WIP
+Alternative name: **kuen** - Kuttl enhanced.
+
+

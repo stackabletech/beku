@@ -1,8 +1,14 @@
+//! Generates the kuttl test directories. The directory structure is:
+//! root_dir/
+//!   test_dir/
+//!     test_scenario1/
+//!     test_scenario2/
+//!     ...
+//!   test2/
+//!     ...
 use std::{collections::HashMap, path::Path};
-
 use minijinja::{context, Environment, Template};
 use serde::Serialize;
-
 use crate::test_definition::TestDefinition;
 use anyhow::{Ok, Result};
 use itertools::Itertools;
@@ -12,6 +18,9 @@ pub struct TestGeneration {
 }
 
 impl TestGeneration {
+
+    /// out_dir: Where to generate the tests. For every named test a directory is created with
+    /// the individual scenarios inside.
     pub fn new(out_dir: &Path, template_base_dir: &Path, test_defintion: TestDefinition) -> Self {
         let dimension_values = test_defintion.dimensions_as_map();
         let mut tests = Vec::new();
@@ -31,6 +40,9 @@ impl TestGeneration {
     }
 }
 
+/// A test. It contains the individual scenarios. They are all identical except for the
+/// dimensions that the test uses. The cartesian product of the dimensions is created,
+/// and for every combination a test scenario is created.
 struct Test {
     out_dir: Box<Path>,
     template_dir: Box<Path>,
@@ -112,6 +124,7 @@ impl Test {
     }
 }
 
+/// A test scenario is a particular instance of a test, with a specific set of dimension values.
 #[derive(Serialize)]
 struct TestScenario {
     out_dir: Box<Path>,
