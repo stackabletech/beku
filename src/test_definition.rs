@@ -28,7 +28,7 @@ impl TestDefinition {
     }
 }
 
-/// A test dimension that can take multiple values. Often this would be a dependency and its versions, 
+/// A test dimension that can take multiple values. Often this would be a dependency and its versions,
 /// i.e. "zookeeper" and "3.7.0", "3.7.1", "3.8.0" etc.
 /// A test case that uses this dimension will be rendered with all of the dimensions values.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

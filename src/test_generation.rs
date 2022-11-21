@@ -6,25 +6,24 @@
 //!     ...
 //!   test2/
 //!     ...
-use std::{collections::HashMap, path::Path};
-use minijinja::{context, Environment, Template};
-use serde::Serialize;
 use crate::test_definition::TestDefinition;
 use anyhow::{Ok, Result};
 use itertools::Itertools;
+use minijinja::{context, Environment, Template};
+use serde::Serialize;
+use std::{collections::HashMap, path::Path};
 
 pub struct TestGeneration {
     tests: Vec<Test>,
 }
 
 impl TestGeneration {
-
     /// out_dir: Where to generate the tests. For every named test a directory is created with
     /// the individual scenarios inside.
-    pub fn new(out_dir: &Path, template_base_dir: &Path, test_defintion: TestDefinition) -> Self {
-        let dimension_values = test_defintion.dimensions_as_map();
+    pub fn new(out_dir: &Path, template_base_dir: &Path, test_definition: TestDefinition) -> Self {
+        let dimension_values = test_definition.dimensions_as_map();
         let mut tests = Vec::new();
-        for test_def in test_defintion.tests.iter() {
+        for test_def in test_definition.tests.iter() {
             let mut test = Test::new(out_dir, &template_base_dir, &test_def.name);
             test.add_scenarios_for_values(&test_def.dimensions, &dimension_values);
             tests.push(test);
@@ -83,7 +82,7 @@ impl Test {
     }
 
     fn generate(&self) -> Result<()> {
-        std::fs::create_dir(self.out_dir.clone())?;
+        std::fs::create_dir_all(self.out_dir.clone())?;
         for s in self.test_scenerarios.iter() {
             s.create_base_directory()?;
         }
