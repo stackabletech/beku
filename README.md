@@ -1,5 +1,5 @@
 # **Be**tter **ku**ttl
 
-Alternative name: **kuen** - Kuttl enhanced.
+So far it can replace our `expand-tests` script: https://github.com/stackabletech/expand-tests
 
-
+Alternative name: **kuen** - Kuttl enhanced
