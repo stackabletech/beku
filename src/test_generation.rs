@@ -9,45 +9,62 @@
 use crate::test_definition::TestDefinition;
 use anyhow::{Ok, Result};
 use itertools::Itertools;
-use minijinja::{context, Environment, Template};
-use tera::{Tera, Context};
-use serde::Serialize;
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+use tera::{Context, Tera};
 
 pub struct TestGeneration {
     tests: Vec<Test>,
+    kuttl_test: PathBuf,
+    out_dir: PathBuf,
 }
 
 impl TestGeneration {
     /// out_dir: Where to generate the tests. For every named test a directory is created with
     /// the individual scenarios inside.
-    pub fn new(out_dir: &Path, template_base_dir: &Path, test_definition: TestDefinition) -> Self {
+    pub fn new(
+        out_dir: &Path,
+        template_base_dir: &Path,
+        test_definition: TestDefinition,
+        kuttl_test: &Path,
+    ) -> Self {
         let dimension_values = test_definition.dimensions_as_map();
         let mut tests = Vec::new();
+        let mut tests_out_dir = PathBuf::from(out_dir);
+        tests_out_dir.push(Path::new("tests"));
         for test_def in test_definition.tests.iter() {
-            let mut test = Test::new(out_dir, &template_base_dir, &test_def.name);
+            let mut test = Test::new(tests_out_dir.as_path(), template_base_dir, &test_def.name);
             test.add_scenarios_for_values(&test_def.dimensions, &dimension_values);
             tests.push(test);
         }
-        Self { tests }
-    }
-
-    pub fn generate_kuttl_file(&self) -> Result<()> {
-        let mut tera = Tera::default();
-        tera.add_template_file("kuttl-test.yaml.jinja2", Some("kuttl-test"))?;
-        let mut context = Context::new();
-        let test_names:Vec<String> = self.tests.iter().map(|t| t.test_name.clone()).collect();
-        context.insert("test_names", &test_names);
-        let out_file = std::fs::File::create("_work/kuttl-test.yaml")?;
-        tera.render_to("kuttl-test", &context, out_file)?;
-        Ok(())
+        Self {
+            tests,
+            kuttl_test: kuttl_test.into(),
+            out_dir: out_dir.into(),
+        }
     }
 
     pub fn generate(&self) -> Result<()> {
+        std::fs::create_dir_all(self.out_dir.as_path())?;
         self.generate_kuttl_file()?;
         for test in self.tests.iter() {
             test.generate()?;
         }
+        Ok(())
+    }
+
+    pub fn generate_kuttl_file(&self) -> Result<()> {
+        let mut tera = Tera::default();
+        tera.add_template_file(self.kuttl_test.as_path(), Some("kuttl-test"))?;
+
+        let mut context = Context::new();
+        let test_names: Vec<String> = self.tests.iter().map(|t| t.test_name.clone()).collect();
+        context.insert("test_names", &test_names);
+
+        let out_file = std::fs::File::create(self.out_dir.with_file_name("kuttl-test.yaml"))?;
+        tera.render_to("kuttl-test", &context, out_file)?;
         Ok(())
     }
 }
@@ -74,7 +91,7 @@ impl Test {
 
     fn add_scenarios_for_values(
         &mut self,
-        used_dimensions: &Vec<String>,
+        used_dimensions: &[String],
         dimension_values: &HashMap<String, Vec<String>>,
     ) {
         let combinations: Vec<Vec<String>> = used_dimensions
@@ -85,6 +102,7 @@ impl Test {
 
         for c in combinations {
             let values: HashMap<String, String> = used_dimensions
+                .to_owned()
                 .clone()
                 .into_iter()
                 .zip(c.clone().into_iter())
@@ -109,7 +127,7 @@ impl Test {
             }
             if entry.path().is_dir() {
                 for s in self.test_scenerarios.iter() {
-                    s.create_directory(&no_prefix_path)?;
+                    s.create_directory(no_prefix_path)?;
                 }
             } else if entry.path().is_file() {
                 let file_name = entry.file_name().to_string_lossy();
@@ -122,7 +140,11 @@ impl Test {
                         .unwrap()
                         .to_string();
                     for s in self.test_scenerarios.iter() {
-                        s.render_template(&tera, &entry.path().to_string_lossy(), Path::new(&rendered_filename))?;
+                        s.render_template(
+                            &tera,
+                            &entry.path().to_string_lossy(),
+                            Path::new(&rendered_filename),
+                        )?;
                     }
                 } else {
                     for s in self.test_scenerarios.iter() {
@@ -143,7 +165,7 @@ struct TestScenario {
 
 impl TestScenario {
     pub fn new(
-        test_base_dir: &Box<Path>,
+        test_base_dir: &Path,
         test_name: &str,
         dimension_values: HashMap<String, String>,
     ) -> Self {
@@ -157,10 +179,13 @@ impl TestScenario {
         for (k, v) in dimension_values.iter() {
             context.insert(k, &v);
         }
-        context.insert("test_scenario", &HashMap::from([("values", dimension_values)]));
+        context.insert(
+            "test_scenario",
+            &HashMap::from([("values", dimension_values)]),
+        );
         Self {
             out_dir: test_base_dir.join(scenario_dir_name).into(),
-            context: context,
+            context,
         }
     }
 
@@ -179,7 +204,12 @@ impl TestScenario {
         Ok(())
     }
 
-    pub fn render_template(&self, tera: &Tera, template_name: &str, partial_output_path: &Path) -> Result<()> {
+    pub fn render_template(
+        &self,
+        tera: &Tera,
+        template_name: &str,
+        partial_output_path: &Path,
+    ) -> Result<()> {
         let out_file = std::fs::File::create(self.out_dir.join(partial_output_path))?;
         tera.render_to(template_name, &self.context, out_file)?;
         Ok(())
