@@ -63,7 +63,9 @@ impl TestGeneration {
         let test_names: Vec<String> = self.tests.iter().map(|t| t.test_name.clone()).collect();
         context.insert("test_names", &test_names);
 
-        let out_file = std::fs::File::create(self.out_dir.with_file_name("kuttl-test.yaml"))?;
+        let mut out_file_name = self.out_dir.clone();
+        out_file_name.push("kuttl-test.yaml");
+        let out_file = std::fs::File::create(out_file_name)?;
         tera.render_to("kuttl-test", &context, out_file)?;
         Ok(())
     }
