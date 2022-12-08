@@ -32,7 +32,19 @@ impl TestGeneration {
         Self { tests }
     }
 
+    pub fn generate_kuttl_file(&self) -> Result<()> {
+        let mut tera = Tera::default();
+        tera.add_template_file("kuttl-test.yaml.jinja2", Some("kuttl-test"))?;
+        let mut context = Context::new();
+        let test_names:Vec<String> = self.tests.iter().map(|t| t.test_name.clone()).collect();
+        context.insert("test_names", &test_names);
+        let out_file = std::fs::File::create("_work/kuttl-test.yaml")?;
+        tera.render_to("kuttl-test", &context, out_file)?;
+        Ok(())
+    }
+
     pub fn generate(&self) -> Result<()> {
+        self.generate_kuttl_file()?;
         for test in self.tests.iter() {
             test.generate()?;
         }
@@ -142,6 +154,9 @@ impl TestScenario {
         }
         let scenario_dir_name = parts.join("");
         let mut context = Context::new();
+        for (k, v) in dimension_values.iter() {
+            context.insert(k, &v);
+        }
         context.insert("test_scenario", &HashMap::from([("values", dimension_values)]));
         Self {
             out_dir: test_base_dir.join(scenario_dir_name).into(),
