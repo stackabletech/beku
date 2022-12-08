@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 
 /// The root struct of a test defintion file.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TestDefinition {
     pub dimensions: Vec<Dimension>,
     pub tests: Vec<Test>,
@@ -31,14 +31,14 @@ impl TestDefinition {
 /// A test dimension that can take multiple values. Often this would be a dependency and its versions,
 /// i.e. "zookeeper" and "3.7.0", "3.7.1", "3.8.0" etc.
 /// A test case that uses this dimension will be rendered with all of the dimensions values.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Dimension {
     pub name: String,
     pub values: Vec<String>,
 }
 
 /// A kuttl test. It has a name and a list of dimensions that it needs.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Test {
     pub name: String,
     pub dimensions: Vec<String>,
