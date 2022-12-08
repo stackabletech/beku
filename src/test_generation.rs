@@ -10,6 +10,7 @@ use crate::test_definition::TestDefinition;
 use anyhow::{Ok, Result};
 use itertools::Itertools;
 use minijinja::{context, Environment, Template};
+use tera::{Tera, Context};
 use serde::Serialize;
 use std::{collections::HashMap, path::Path};
 
@@ -82,10 +83,12 @@ impl Test {
     }
 
     fn generate(&self) -> Result<()> {
+        // create the directory for this test and all the scenario directories inside
         std::fs::create_dir_all(self.out_dir.clone())?;
         for s in self.test_scenerarios.iter() {
             s.create_base_directory()?;
         }
+        let mut tera = Tera::default();
         for entry in walkdir::WalkDir::new(self.template_dir.clone()) {
             let entry = entry.unwrap(); // TODO fix unwrap
             let no_prefix_path = entry.path().strip_prefix(self.template_dir.clone())?;
@@ -99,18 +102,15 @@ impl Test {
             } else if entry.path().is_file() {
                 let file_name = entry.file_name().to_string_lossy();
                 if file_name.ends_with(".j2") {
-                    let template = std::fs::read_to_string(entry.path())?;
+                    tera.add_template_file(entry.path(), None)?;
                     let rendered_filename = no_prefix_path
                         .to_str()
                         .unwrap()
                         .strip_suffix(".j2")
                         .unwrap()
                         .to_string();
-                    let mut env = Environment::new();
-                    env.add_template(&rendered_filename, &template)?;
-                    let template = env.get_template(&rendered_filename)?;
                     for s in self.test_scenerarios.iter() {
-                        s.render_template(&template, Path::new(&rendered_filename))?;
+                        s.render_template(&tera, &entry.path().to_string_lossy(), Path::new(&rendered_filename))?;
                     }
                 } else {
                     for s in self.test_scenerarios.iter() {
@@ -124,10 +124,9 @@ impl Test {
 }
 
 /// A test scenario is a particular instance of a test, with a specific set of dimension values.
-#[derive(Serialize)]
 struct TestScenario {
     out_dir: Box<Path>,
-    values: HashMap<String, String>,
+    context: Context,
 }
 
 impl TestScenario {
@@ -142,9 +141,11 @@ impl TestScenario {
             parts.push(rest);
         }
         let scenario_dir_name = parts.join("");
+        let mut context = Context::new();
+        context.insert("test_scenario", &HashMap::from([("values", dimension_values)]));
         Self {
             out_dir: test_base_dir.join(scenario_dir_name).into(),
-            values: dimension_values,
+            context: context,
         }
     }
 
@@ -163,9 +164,9 @@ impl TestScenario {
         Ok(())
     }
 
-    pub fn render_template(&self, template: &Template, partial_output_path: &Path) -> Result<()> {
-        let rendered = template.render(context!(test_scenario => self))?;
-        std::fs::write(self.out_dir.join(partial_output_path), rendered)?;
+    pub fn render_template(&self, tera: &Tera, template_name: &str, partial_output_path: &Path) -> Result<()> {
+        let out_file = std::fs::File::create(self.out_dir.join(partial_output_path))?;
+        tera.render_to(template_name, &self.context, out_file)?;
         Ok(())
     }
 }
