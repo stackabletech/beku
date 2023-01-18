@@ -1,3 +1,5 @@
+**Archived, replaced by https://github.com/stackabletech/beku.py**
+
 # beku
 
 A helper tool to generate kuttl test suites. Improves upon [expand-tests](https://github.com/stackabletech/expand-tests)
